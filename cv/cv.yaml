@@ -24,7 +24,9 @@ cv:
         details: Docker, Traefik, Cloudflare (CDN/DNS), Tailscale VPN, CrowdSec
       - label: Concepts
         details: MVC, relational databases
-
+      - label: Testing
+        details: Jest, React Testing Library, Cypress, Playwright
+  
     Projects:
       - name: Crowdstage
         summary: Built with Laravel using MVC architecture and a relational database.
