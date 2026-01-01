@@ -1,7 +1,7 @@
-name: Render CV & Cover Letter
+name: RenderCV (PR Preview)
 
 on:
-  # Run ONLY when a PR is opened (preview old vs new PDFs).
+  # Generate old vs new PDFs for a PR preview comment.
   pull_request:
     types: [opened]
     branches: [main, master]
@@ -12,11 +12,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: rendercv-${{ github.event.pull_request.number }}
+  group: rendercv-pr-preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  render:
+  preview:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head

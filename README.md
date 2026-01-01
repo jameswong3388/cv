@@ -1,5 +1,7 @@
 This repo contains my CV and cover letter, generated with **RenderCV**.
 
 - **Source of truth**: `cv/cv.yaml` and `cl/cl.yaml`
-- **Automation**: When a PR is **opened** against `main/master`, GitHub Actions renders PDFs for both the **base (old)** and **PR head (new)** commits, uploads them as workflow artifacts, and comments the PR with links
+- **Automation**:
+  - **PR opened**: renders **old (base)** vs **new (PR head)** PDFs, uploads both as artifacts, and comments the PR with links
+  - **PR merged**: re-renders PDFs on the base branch and commits updated PDFs back to the repo
 - **Outputs**: `cv/JamesWong_CV.pdf`, `cl/Cover letter.pdf`
