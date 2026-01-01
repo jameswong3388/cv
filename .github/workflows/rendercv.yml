@@ -1,0 +1,235 @@
+name: Render CV & Cover Letter
+
+on:
+  # Run ONLY after a PR is merged into `master`.
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: rendercv-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout base branch (post-merge)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install RenderCV
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "rendercv[full]"
+
+      - name: Record PDF fingerprints (before)
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          
+          def sha256_file(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+          
+          files = [
+              "cv/JamesWong_CV.pdf",
+              "cl/Cover letter.pdf",
+          ]
+          data = {}
+          for f in files:
+              p = Path(f)
+              if p.exists():
+                  data[f] = {"sha256": sha256_file(p), "bytes": p.stat().st_size}
+              else:
+                  data[f] = None
+          
+          Path("rendercv_fingerprint_before.json").write_text(
+              json.dumps(data, indent=2), encoding="utf-8"
+          )
+          print("Wrote rendercv_fingerprint_before.json")
+          PY
+
+      - name: Render CV
+        run: |
+          rendercv render cv/cv.yaml -nomd -nohtml -nopng
+
+      - name: Render cover letter
+        run: |
+          rendercv render cl/cl.yaml -nomd -nohtml -nopng
+
+      - name: Record PDF fingerprints (after)
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          
+          def sha256_file(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+          
+          files = [
+              "cv/JamesWong_CV.pdf",
+              "cl/Cover letter.pdf",
+          ]
+          data = {}
+          for f in files:
+              p = Path(f)
+              if p.exists():
+                  data[f] = {"sha256": sha256_file(p), "bytes": p.stat().st_size}
+              else:
+                  data[f] = None
+          
+          Path("rendercv_fingerprint_after.json").write_text(
+              json.dumps(data, indent=2), encoding="utf-8"
+          )
+          print("Wrote rendercv_fingerprint_after.json")
+          PY
+
+      - name: Stage rendered PDFs
+        run: |
+          git add -A "cv/JamesWong_CV.pdf" "cl/Cover letter.pdf"
+          git diff --cached --name-status > rendercv_diff.txt || true
+          git diff --cached --stat > rendercv_stat.txt || true
+
+      - name: Commit rendered PDFs (if changed)
+        id: commit
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --cached --quiet; then
+            echo "No PDF changes to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "commit_sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "chore(rendercv): update rendered PDFs [skip ci]"
+          git push origin "HEAD:${{ github.event.pull_request.base.ref }}"
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload PDFs (artifacts)
+        if: steps.commit.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-pdfs
+          path: |
+            cv/JamesWong_CV.pdf
+            cl/Cover letter.pdf
+
+      - name: Comment on PR with rendered changes
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RENDERCV_CHANGED: ${{ steps.commit.outputs.changed }}
+          RENDERCV_COMMIT_SHA: ${{ steps.commit.outputs.commit_sha }}
+        with:
+          script: |
+            const fs = require("fs");
+            
+            const prNumber = context.payload.pull_request.number;
+            const baseRef = context.payload.pull_request.base.ref;
+            
+            const changed = process.env.RENDERCV_CHANGED === "true";
+            const commitSha = process.env.RENDERCV_COMMIT_SHA || "";
+            const commitUrl = commitSha
+              ? `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${commitSha}`
+              : "";
+            
+            function readJson(path) {
+              try {
+                return JSON.parse(fs.readFileSync(path, "utf8"));
+              } catch {
+                return null;
+              }
+            }
+            function readText(path) {
+              try {
+                return fs.readFileSync(path, "utf8").trim();
+              } catch {
+                return "";
+              }
+            }
+            
+            const before = readJson("rendercv_fingerprint_before.json") || {};
+            const after = readJson("rendercv_fingerprint_after.json") || {};
+            const nameStatus = readText("rendercv_diff.txt");
+            const stat = readText("rendercv_stat.txt");
+            
+            const fmtFingerprint = (obj) => {
+              if (!obj) return "n/a";
+              const short = obj.sha256 ? `${obj.sha256.slice(0, 12)}…` : "n/a";
+              return `${short} / ${obj.bytes ?? "?"} bytes`;
+            };
+            
+            const lines = [];
+            lines.push("### RenderCV: rendered PDFs after merge");
+            lines.push(`- **Base branch**: \`${baseRef}\``);
+            
+            if (changed) {
+              lines.push(`- **Result**: ✅ PDFs updated and committed: ${commitSha ? `[${commitSha.slice(0, 7)}](${commitUrl})` : "updated"}`);
+            } else {
+              lines.push("- **Result**: ℹ️ No PDF changes; nothing to commit.");
+            }
+            
+            if (nameStatus) {
+              lines.push("");
+              lines.push("**Changed files:**");
+              lines.push("```");
+              lines.push(nameStatus);
+              lines.push("```");
+            }
+            
+            if (stat) {
+              lines.push("");
+              lines.push("**Diff stat:**");
+              lines.push("```");
+              lines.push(stat);
+              lines.push("```");
+            }
+            
+            // Fingerprint table (helps verify PDF changes even though PDFs are binary)
+            lines.push("");
+            lines.push("**PDF fingerprints (sha256 / bytes):**");
+            lines.push("");
+            lines.push("| File | Before | After |");
+            lines.push("| --- | --- | --- |");
+            const files = ["cv/JamesWong_CV.pdf", "cl/Cover letter.pdf"];
+            for (const f of files) {
+              lines.push(`| \`${f}\` | ${fmtFingerprint(before[f])} | ${fmtFingerprint(after[f])} |`);
+            }
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: lines.join("\n"),
+            });
+
+
