@@ -1,0 +1,71 @@
+name: Render CV & Cover Letter
+
+on:
+  push:
+    # Your default branch is `main`, but `master` is also included for compatibility.
+    branches: [main, master]
+    # Prevent infinite loops when this workflow commits the rendered PDFs.
+    paths-ignore:
+      - cv/JamesWong_CV.pdf
+      - cl/Cover letter.pdf
+      - cv/rendercv_output/**
+      - cl/rendercv_output/**
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rendercv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install RenderCV
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "rendercv[full]"
+
+      - name: Render CV
+        run: |
+          rendercv render cv/cv.yaml -nomd -nohtml -nopng
+
+      - name: Render cover letter
+        run: |
+          rendercv render cl/cl.yaml -nomd -nohtml -nopng
+
+      - name: Upload PDFs (artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-pdfs
+          path: |
+            cv/JamesWong_CV.pdf
+            cl/Cover letter.pdf
+
+      - name: Commit rendered PDFs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A "cv/JamesWong_CV.pdf" "cl/Cover letter.pdf"
+
+          if git diff --cached --quiet; then
+            echo "No PDF changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: auto-render CV and cover letter"
+          git push
+
+

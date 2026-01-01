@@ -1,0 +1,98 @@
+cv:
+  name: James Wong
+  headline: Computer Science (AI) Undergraduate
+  location: Kajang, Selangor, Malaysia
+  email:
+    - jameswong0517@gmail.com
+    - james@jameswong.tech
+  phone: +60-16-7359-116
+  website: https://www.jameswong.tech
+  sections:
+    Summary:
+      - As a passionate tech artisan, I am dedicated to crafting the future through innovative solutions and cutting-edge technology. With a deep-rooted love for all things tech, I possess a unique blend of creativity and technical expertise that enables me to bring ideas to life and push the boundaries of innovation.
+
+    Skills:
+      - label: Languages
+        details: JavaScript / TypeScript, Python
+      - label: Frontend
+        details: React, Vue.js, Next.js, Tailwind CSS
+      - label: Backend
+        details: Laravel
+      - label: Databases
+        details: PostgreSQL, pgvector
+      - label: DevOps
+        details: Docker, Traefik, Cloudflare (CDN/DNS), Tailscale VPN, CrowdSec
+      - label: Concepts
+        details: MVC, relational databases
+
+    Projects:
+      - name: Crowdstage
+        summary: Built with Laravel using MVC architecture and a relational database.
+        highlights:
+          - Laravel
+          - MVC, relational database
+      - name: Personal Portfolio
+        summary: Portfolio website integrated with the Spotify API.
+        highlights:
+          - Spotify API integration
+          - Deployed at [jameswong.tech](https://www.jameswong.tech)
+      - name: Chrysie Chatbot
+        summary: Chatbot powered by OpenAI APIs with PostgreSQL + pgvector for vector search / embeddings.
+        highlights:
+          - OpenAI APIs
+          - PostgreSQL + pgvector
+      - name: Self-Hosting Services
+        summary: Self-hosted services on a VPS with secure networking and edge protection.
+        highlights:
+          - VPS, Docker, Traefik
+          - Tailscale VPN
+          - Cloudflare (CDN, DNS)
+          - CrowdSec
+
+    Education:
+      - institution: Asia Pacific University (APU)
+        area: BSc Computer Science (Artificial Intelligence)
+        start_date: 2022
+        end_date: present
+      - institution: Universiti Tunku Abdul Rahman (UTAR)
+        area: Foundation in Engineering
+        start_date: 2020
+        end_date: 2021
+      - institution: Tenby International School
+        area: IGCSE
+
+    Certifications & Honors:
+      - bullet: Gold in IUCEL (International University Carnival on E-Learning) — 2023
+      - bullet: CCNA - Introduction to Networks (CISCO)
+
+    Languages:
+      - label: English
+        details: Fluent
+      - label: Chinese
+        details: Native
+      - label: Bahasa Melayu
+        details: Second Language
+
+design:
+  theme: classic
+  page:
+    size: a4
+    top_margin: 1.5cm
+    bottom_margin: 1.5cm
+    left_margin: 1.5cm
+    right_margin: 1.5cm
+    show_footer: false
+    show_top_note: false
+
+locale:
+  language: english
+
+settings:
+  render_command:
+    pdf_path: JamesWong_CV.pdf
+    typst_path: rendercv_output/jameswong_cv.typ
+    dont_generate_markdown: true
+    dont_generate_html: true
+    dont_generate_png: true
+
+
