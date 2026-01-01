@@ -6,9 +6,6 @@ cv:
   email: jameswong0517@gmail.com
   phone: +60-16-7359-116
   website: https://www.jameswong.tech
-  social_networks:
-    - network: Website
-      username: jameswong.tech
   sections:
     summary:
       - '[cite_start]Full-stack developer and aspiring data scientist with a passion for leveraging technology to tackle complex problems[cite: 9].'
