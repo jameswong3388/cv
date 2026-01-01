@@ -1,10 +1,10 @@
 name: Render CV & Cover Letter
 
 on:
-  # Run ONLY after a PR is merged into `master`.
+  # Run ONLY after a PR is merged into `main` (default branch).
   pull_request:
     types: [closed]
-    branches: [master]
+    branches: [main]
 
 permissions:
   contents: write
