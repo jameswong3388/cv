@@ -1,4 +1,4 @@
-name: RenderCV (PR Preview)
+name: RenderCV (CV PR Preview)
 
 on:
   # Generate old vs new PDFs for a PR preview comment.
@@ -36,9 +36,9 @@ jobs:
       - name: Install RenderCV
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "rendercv[full]"
+          python -m pip install "rendercv[full]==2.6"
 
-      - name: Render PDFs for base SHA (old)
+      - name: Render CV PDF for base SHA (old)
         run: |
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -46,23 +46,25 @@ jobs:
           git worktree add base-worktree "${BASE_SHA}"
 
           pushd base-worktree
+          rm -rf cv/rendercv_output
           rendercv render cv/cv.yaml -nomd -nohtml -nopng
-          rendercv render cl/cl.yaml -nomd -nohtml -nopng
           popd
 
-          mkdir -p out/base/cv out/base/cl
-          cp -f "base-worktree/cv/JamesWong_CV.pdf" "out/base/cv/JamesWong_CV.pdf"
-          cp -f "base-worktree/cl/Cover letter.pdf" "out/base/cl/Cover letter.pdf"
+          mkdir -p out/base/cv
+          OLD_PDF="$(ls -1t base-worktree/cv/rendercv_output/*.pdf | head -n 1)"
+          test -s "$OLD_PDF"
+          cp -f "$OLD_PDF" "out/base/cv/JamesWong_CV.pdf"
 
-      - name: Render PDFs for PR head SHA (new)
+      - name: Render CV PDF for PR head SHA (new)
         run: |
           set -euo pipefail
+          rm -rf cv/rendercv_output
           rendercv render cv/cv.yaml -nomd -nohtml -nopng
-          rendercv render cl/cl.yaml -nomd -nohtml -nopng
 
-          mkdir -p out/head/cv out/head/cl
-          cp -f "cv/JamesWong_CV.pdf" "out/head/cv/JamesWong_CV.pdf"
-          cp -f "cl/Cover letter.pdf" "out/head/cl/Cover letter.pdf"
+          mkdir -p out/head/cv
+          NEW_PDF="$(ls -1t cv/rendercv_output/*.pdf | head -n 1)"
+          test -s "$NEW_PDF"
+          cp -f "$NEW_PDF" "out/head/cv/JamesWong_CV.pdf"
 
       - name: Compute PDF fingerprints (old vs new)
         run: |
@@ -80,7 +82,6 @@ jobs:
           
           pairs = {
               "cv/JamesWong_CV.pdf": ("out/base/cv/JamesWong_CV.pdf", "out/head/cv/JamesWong_CV.pdf"),
-              "cl/Cover letter.pdf": ("out/base/cl/Cover letter.pdf", "out/head/cl/Cover letter.pdf"),
           }
           
           out = {}
@@ -96,25 +97,23 @@ jobs:
           print("Wrote rendercv_pr_fingerprints.json")
           PY
 
-      - name: Upload old PDFs (base)
+      - name: Upload old CV PDF (base)
         id: upload_old
         uses: actions/upload-artifact@v4
         with:
-          name: old-pdfs-pr-${{ github.event.pull_request.number }}
+          name: old-cv-pdf-pr-${{ github.event.pull_request.number }}
           path: |
             out/base/cv/JamesWong_CV.pdf
-            out/base/cl/Cover letter.pdf
 
-      - name: Upload new PDFs (head)
+      - name: Upload new CV PDF (head)
         id: upload_new
         uses: actions/upload-artifact@v4
         with:
-          name: new-pdfs-pr-${{ github.event.pull_request.number }}
+          name: new-cv-pdf-pr-${{ github.event.pull_request.number }}
           path: |
             out/head/cv/JamesWong_CV.pdf
-            out/head/cl/Cover letter.pdf
 
-      - name: Comment on PR with old vs new PDFs
+      - name: Comment on PR with old vs new CV PDF
         if: always()
         uses: actions/github-script@v7
         env:
@@ -153,19 +152,19 @@ jobs:
             
             const lines = [];
             lines.push(marker);
-            lines.push("### RenderCV: PR preview (old vs new PDFs)");
+            lines.push("### RenderCV: CV PR preview (old vs new PDF)");
             lines.push(`- **Base**: \`${baseRef}\` @ \`${baseSha.slice(0, 7)}\``);
             lines.push(`- **PR head**: \`${headSha.slice(0, 7)}\``);
             lines.push("");
-            if (oldArtifactUrl) lines.push(`- **Old PDFs (base)**: ${oldArtifactUrl}`);
-            if (newArtifactUrl) lines.push(`- **New PDFs (PR)**: ${newArtifactUrl}`);
+            if (oldArtifactUrl) lines.push(`- **Old CV PDF (base)**: ${oldArtifactUrl}`);
+            if (newArtifactUrl) lines.push(`- **New CV PDF (PR)**: ${newArtifactUrl}`);
             
             lines.push("");
             lines.push("**PDF fingerprints (sha256 / bytes):**");
             lines.push("");
             lines.push("| File | Old (base) | New (PR) |");
             lines.push("| --- | --- | --- |");
-            const files = ["cv/JamesWong_CV.pdf", "cl/Cover letter.pdf"];
+            const files = ["cv/JamesWong_CV.pdf"];
             for (const f of files) {
               const row = fp[f] || {};
               lines.push(`| \`${f}\` | ${fmtFingerprint(row.old, "old")} | ${fmtFingerprint(row.new, "new")} |`);
